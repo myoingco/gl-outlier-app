@@ -1,9 +1,8 @@
-# streamlit_app.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 
 st.title("GL Outlier Detection Agent")
 
@@ -13,6 +12,20 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     st.write("Data Preview", df.head())
 
+    # Technique selection with descriptions
+    technique_options = {
+        "Isolation Forest - Tree-based model (good for general anomalies)": "Isolation Forest",
+        "Local Outlier Factor - Density-based (detects local outliers)": "Local Outlier Factor",
+        "Z-score - Statistical deviation method (fast and interpretable)": "Z-score"
+    }
+    
+    technique_display = list(technique_options.keys())
+    selected_technique_desc = st.selectbox("Select an anomaly detection technique:", technique_display)
+    selected_technique = technique_options[selected_technique_desc]
+    
+    st.write(f"🔍 **Technique selected:** {selected_technique}")
+
+    # Test selection
     test = st.selectbox("Select a test to run", [
         "Unusual Transaction Amounts",
         "Duplicate or Near-Duplicate Entries",
@@ -22,11 +35,25 @@ if uploaded_file:
     ])
 
     if test == "Unusual Transaction Amounts":
-        st.subheader("Detecting Unusual Transaction Amounts using Isolation Forest")
+        st.subheader(f"Detecting Unusual Transaction Amounts using {selected_technique}")
         X = df[['amount']].fillna(0)
-        model = IsolationForest(contamination=0.01, random_state=42)
-        df['anomaly_score'] = model.fit_predict(X)
-        result = df[df['anomaly_score'] == -1]
+        
+        if selected_technique == "Isolation Forest":
+            model = IsolationForest(contamination=0.01, random_state=42)
+            df['anomaly_score'] = model.fit_predict(X)
+            result = df[df['anomaly_score'] == -1]
+        
+        elif selected_technique == "Local Outlier Factor":
+            model = LocalOutlierFactor(n_neighbors=20, contamination=0.01)
+            df['anomaly_score'] = model.fit_predict(X)
+            result = df[df['anomaly_score'] == -1]
+        
+        elif selected_technique == "Z-score":
+            amount_mean = df['amount'].mean()
+            amount_std = df['amount'].std()
+            df['z_score'] = (df['amount'] - amount_mean) / amount_std
+            result = df[np.abs(df['z_score']) > 3]
+
         st.write("Anomalies Found:", result)
 
     elif test == "Duplicate or Near-Duplicate Entries":
@@ -37,12 +64,29 @@ if uploaded_file:
         st.write("Duplicate Entries Found:", result)
 
     elif test == "Anomalous Vendor or Customer Activity":
-        st.subheader("Detecting Anomalous Vendor Activity using Isolation Forest")
+        st.subheader(f"Detecting Anomalous Vendor Activity using {selected_technique}")
         grouped = df.groupby('vendor_id')['amount'].mean().reset_index()
-        model = IsolationForest(contamination=0.05, random_state=42)
-        grouped['anomaly'] = model.fit_predict(grouped[['amount']])
-        outliers = grouped[grouped['anomaly'] == -1]['vendor_id']
-        result = df[df['vendor_id'].isin(outliers)]
+        X = grouped[['amount']].fillna(0)
+
+        if selected_technique == "Isolation Forest":
+            model = IsolationForest(contamination=0.05, random_state=42)
+            grouped['anomaly'] = model.fit_predict(X)
+            outliers = grouped[grouped['anomaly'] == -1]['vendor_id']
+            result = df[df['vendor_id'].isin(outliers)]
+        
+        elif selected_technique == "Local Outlier Factor":
+            model = LocalOutlierFactor(n_neighbors=20, contamination=0.05)
+            grouped['anomaly'] = model.fit_predict(X)
+            outliers = grouped[grouped['anomaly'] == -1]['vendor_id']
+            result = df[df['vendor_id'].isin(outliers)]
+
+        elif selected_technique == "Z-score":
+            amount_mean = grouped['amount'].mean()
+            amount_std = grouped['amount'].std()
+            grouped['z_score'] = (grouped['amount'] - amount_mean) / amount_std
+            outliers = grouped[np.abs(grouped['z_score']) > 3]['vendor_id']
+            result = df[df['vendor_id'].isin(outliers)]
+
         st.write("Vendor-based Anomalies:", result)
 
     elif test == "Rare GL Code Combinations":
