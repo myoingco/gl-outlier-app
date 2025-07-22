@@ -14,10 +14,11 @@ if uploaded_file:
 
     # Technique selection with descriptions
     technique_options = {
-        "Isolation Forest - Tree-based model (good for general anomalies)": "Isolation Forest",
-        "Local Outlier Factor - Density-based (detects local outliers)": "Local Outlier Factor",
-        "Z-score - Statistical deviation method (fast and interpretable)": "Z-score"
-    }
+    "Isolation Forest - Tree-based model isolating outliers efficiently; best for general anomaly detection.": "Isolation Forest",
+    "Local Outlier Factor - Density-based; flags points with significantly lower local density than neighbors, great for clustered data.": "Local Outlier Factor",
+    "Z-score - Statistical thresholding; flags points far from mean based on standard deviations, simple and fast.": "Z-score"
+}
+
     
     technique_display = list(technique_options.keys())
     selected_technique_desc = st.selectbox("Select an anomaly detection technique:", technique_display)
